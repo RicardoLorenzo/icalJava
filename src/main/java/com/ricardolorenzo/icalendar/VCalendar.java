@@ -1,21 +1,18 @@
 /*
  * VCalendar class
  * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along with this program. If
+ * not, see <http://www.gnu.org/licenses/>.
  * 
  * Author: Ricardo Lorenzo <unshakablespirit@gmail.com>
- * 
  */
 package com.ricardolorenzo.icalendar;
 
@@ -42,7 +39,7 @@ import java.util.StringTokenizer;
 
 /**
  * @author Ricardo_Lorenzo
- *
+ * 
  */
 public class VCalendar implements Serializable {
     public static final long serialVersionUID = 987294720947290472L;
@@ -72,9 +69,8 @@ public class VCalendar implements Serializable {
 
         if (ical_file.exists()) {
             try {
-                @SuppressWarnings("resource")
-                InputStream is = new BufferedInputStream(new ByteArrayInputStream(
-                        readBytes(new FileInputStream(ical_file))));
+                InputStream is = new BufferedInputStream(new ByteArrayInputStream(readBytes(new FileInputStream(
+                        ical_file))));
                 buffer = new BufferedReader(new InputStreamReader(is));
                 try {
                     parse();
@@ -90,8 +86,7 @@ public class VCalendar implements Serializable {
     public VCalendar(final String content) throws VCalendarException {
         this();
         try {
-            buffer = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(
-                    content.trim().getBytes())));
+            buffer = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(content.trim().getBytes())));
             try {
                 parse();
             } finally {
@@ -136,6 +131,7 @@ public class VCalendar implements Serializable {
 
     /**
      * Add VTodo object
+     * 
      * @param vt
      */
     public void addVtodo(final VTodo vt) {
@@ -144,6 +140,7 @@ public class VCalendar implements Serializable {
 
     /**
      * Return all active VTodo objects
+     * 
      * @return
      */
     public ArrayList<VTodo> getActiveVtodos() {
@@ -193,8 +190,8 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return a map of VEvent objects related to the calendar object day.
-     * The key of this map is an <code>Integer</code> with the day hour (24h format).
+     * Return a map of VEvent objects related to the calendar object day. The key of this map is an
+     * <code>Integer</code> with the day hour (24h format).
      * 
      * @param date
      * @return
@@ -276,8 +273,8 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return a map of VEvent objects related to the calendar object month.
-     * The key of this map is an <code>Integer</code> with the month day hour.
+     * Return a map of VEvent objects related to the calendar object month. The key of this map is
+     * an <code>Integer</code> with the month day hour.
      * 
      * @param date
      * @return
@@ -330,8 +327,8 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return a VJournal map related to the calendar object month. The key
-     * of the map is an <code>Integer</code> with the month day.
+     * Return a VJournal map related to the calendar object month. The key of the map is an
+     * <code>Integer</code> with the month day.
      * 
      * @param date
      * @return
@@ -486,7 +483,7 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return a VFreeBusy object for a specific time period. 
+     * Return a VFreeBusy object for a specific time period.
      * 
      * @param period
      * @return
@@ -504,15 +501,11 @@ public class VCalendar implements Serializable {
                 }
             }
         }
-        /*for(String id : vtodo.keySet()) {
-        	VTodo vt = vtodo.get(id);
-        	List<Period> periods = vt.getPeriods(period);
-        	if(periods != null && !periods.isEmpty()) {
-        		for(Period p : periods) {
-        			vfb.addBusy(p);
-        		}
-        	}
-        }*/
+        /*
+         * for(String id : vtodo.keySet()) { VTodo vt = vtodo.get(id); List<Period> periods =
+         * vt.getPeriods(period); if(periods != null && !periods.isEmpty()) { for(Period p :
+         * periods) { vfb.addBusy(p); } } }
+         */
         return vfb;
     }
 
@@ -542,7 +535,7 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return VJournal objects for a specific time period. 
+     * Return VJournal objects for a specific time period.
      * 
      * @param period
      * @return
@@ -587,7 +580,7 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return VTodo objects for a specific time period. 
+     * Return VTodo objects for a specific time period.
      * 
      * @param period
      * @return
@@ -607,8 +600,7 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return a list of <code>Integer</code> with days in a month that contains VEvent
-     * objects
+     * Return a list of <code>Integer</code> with days in a month that contains VEvent objects
      * 
      * @param date
      * @param events
@@ -661,8 +653,8 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return a map of VEvent objects related to the calendar object day.
-     * The key of this map is an <code>Integer</code> with the week day.
+     * Return a map of VEvent objects related to the calendar object day. The key of this map is an
+     * <code>Integer</code> with the week day.
      * 
      * @param date
      * @return
@@ -732,8 +724,7 @@ public class VCalendar implements Serializable {
         if (status == null) {
             return true;
         }
-        List<String> active_status = new ArrayList<String>(Arrays.asList(new String[] { "NEEDS-ACTION",
-                "IN-PROCESS" }));
+        List<String> active_status = new ArrayList<String>(Arrays.asList(new String[] { "NEEDS-ACTION", "IN-PROCESS" }));
         return active_status.contains(status.toUpperCase());
     }
 
@@ -1605,22 +1596,22 @@ public class VCalendar implements Serializable {
     @SuppressWarnings("resource")
     public void write() throws VCalendarException {
         if (ical_file != null && ical_file.canWrite()) {
-            //FileLock fl = new FileLock(ical_file);
+            // FileLock fl = new FileLock(ical_file);
             BufferedOutputStream os = null;
             try {
                 os = new BufferedOutputStream(new FileOutputStream(ical_file));
-                //fl.lock();
+                // fl.lock();
                 try {
                     os.write(toString().getBytes());
                 } finally {
-                    //fl.unlock();
+                    // fl.unlock();
                 }
             } catch (FileNotFoundException e) {
                 throw new VCalendarException(e);
             } catch (IOException e) {
                 throw new VCalendarException(e);
-                //} catch (FileLockException e) {
-                //throw new VCalendarException(e);
+                // } catch (FileLockException e) {
+                // throw new VCalendarException(e);
             } finally {
                 try {
                     os.close();
