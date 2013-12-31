@@ -1,21 +1,18 @@
 /*
  * Duration class
  * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along with this program. If
+ * not, see <http://www.gnu.org/licenses/>.
  * 
  * Author: Ricardo Lorenzo <unshakablespirit@gmail.com>
- * 
  */
 package com.ricardolorenzo.icalendar;
 
@@ -23,7 +20,7 @@ import java.io.Serializable;
 
 /**
  * @author Ricardo_Lorenzo
- *
+ * 
  */
 public class Duration implements Serializable {
     public static final long serialVersionUID = 89472947947292854L;
@@ -37,6 +34,7 @@ public class Duration implements Serializable {
 
     /**
      * Duration constructor from a string representation.
+     * 
      * @param value
      */
     public Duration(final String value) {
@@ -66,35 +64,40 @@ public class Duration implements Serializable {
                 case 'W':
                     try {
                         weeks = Integer.parseInt(tok);
-                    } catch (NumberFormatException _ex) {
+                    } catch (NumberFormatException e) {
+                        // nothing
                     }
                     tok = "";
                     break;
                 case 'D':
                     try {
                         days = Integer.parseInt(tok);
-                    } catch (NumberFormatException _ex) {
+                    } catch (NumberFormatException e) {
+                        // nothing
                     }
                     tok = "";
                     break;
                 case 'H':
                     try {
                         hours = Integer.parseInt(tok);
-                    } catch (NumberFormatException _ex) {
+                    } catch (NumberFormatException e) {
+                        // nothing
                     }
                     tok = "";
                     break;
                 case 'M':
                     try {
                         minutes = Integer.parseInt(tok);
-                    } catch (NumberFormatException _ex) {
+                    } catch (NumberFormatException e) {
+                        // nothing
                     }
                     tok = "";
                     break;
                 case 'S':
                     try {
                         minutes = Integer.parseInt(tok);
-                    } catch (NumberFormatException _ex) {
+                    } catch (NumberFormatException e) {
+                        // nothing
                     }
                     tok = "";
                     break;
@@ -107,6 +110,7 @@ public class Duration implements Serializable {
 
     /**
      * Duration constructor.
+     * 
      * @param value
      */
     public Duration() {
@@ -156,6 +160,7 @@ public class Duration implements Serializable {
 
     /**
      * (non-Javadoc)
+     * 
      * @see java.lang.Object#toString()
      */
     @Override
@@ -198,6 +203,7 @@ public class Duration implements Serializable {
 
     /**
      * Returns the duration of the Trigger in milliseconds.
+     * 
      * @param arg0
      * @return
      */
@@ -227,6 +233,7 @@ public class Duration implements Serializable {
 
     /**
      * Returns the number of days.
+     * 
      * @return int
      */
     public int getDays() {
@@ -238,6 +245,7 @@ public class Duration implements Serializable {
 
     /**
      * Returns the number of hours.
+     * 
      * @return int
      */
     public int getHours() {
@@ -249,6 +257,7 @@ public class Duration implements Serializable {
 
     /**
      * Returns the number of minutes.
+     * 
      * @return int
      */
     public int getMinutes() {
@@ -260,6 +269,7 @@ public class Duration implements Serializable {
 
     /**
      * Returns the number of seconds.
+     * 
      * @return int
      */
     public int getSeconds() {
@@ -271,6 +281,7 @@ public class Duration implements Serializable {
 
     /**
      * Returns the number of weeks.
+     * 
      * @return int
      */
     public int getWeeks() {
@@ -286,6 +297,7 @@ public class Duration implements Serializable {
 
     /**
      * Set the number of days.
+     * 
      * @return int
      */
     public void setDays(final int days) {
@@ -294,6 +306,7 @@ public class Duration implements Serializable {
 
     /**
      * Set the number of hours.
+     * 
      * @return int
      */
     public void setHours(final int hours) {
@@ -302,6 +315,7 @@ public class Duration implements Serializable {
 
     /**
      * Set the number of minutes.
+     * 
      * @return int
      */
     public void setMinutes(final int minutes) {
@@ -310,6 +324,7 @@ public class Duration implements Serializable {
 
     /**
      * Set the number of seconds.
+     * 
      * @return int
      */
     public void setSeconds(final int seconds) {
@@ -318,6 +333,7 @@ public class Duration implements Serializable {
 
     /**
      * Set the number of weeks.
+     * 
      * @return int
      */
     public void setWeeks(final int weeks) {

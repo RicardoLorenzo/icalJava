@@ -35,6 +35,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.StringTokenizer;
 
 /**
@@ -44,8 +45,8 @@ import java.util.StringTokenizer;
 public class VCalendar implements Serializable {
     public static final long serialVersionUID = 987294720947290472L;
     protected static final String CRLF = "\r\n";
-    private static final String prodid = "-//Ricardo Lorenzo//NONSGML Ricardo Lorenzo//EN";
-    private static final String version = "2.0";
+    public static final String prodid = "-//Ricardo Lorenzo//NONSGML Ricardo Lorenzo//EN";
+    public static final String version = "2.0";
     private VTimeZone vtimezone;
     private VFreeBusy vfreebusy;
     private Map<String, VEvent> vevent;
@@ -143,11 +144,10 @@ public class VCalendar implements Serializable {
      * 
      * @return
      */
-    public ArrayList<VTodo> getActiveVtodos() {
-        ArrayList<VTodo> vtodos = new ArrayList<VTodo>();
-        ArrayList<String> uids = new ArrayList<String>(vtodo.keySet());
-        for (int i = uids.size(); --i >= 0;) {
-            VTodo _vt = vtodo.get(uids.get(i));
+    public List<VTodo> getActiveVtodos() {
+        List<VTodo> vtodos = new ArrayList<VTodo>();
+        for (Entry<String, VTodo> e : vtodo.entrySet()) {
+            VTodo _vt = e.getValue();
             if (isActiveStatus(_vt.getStatus())) {
                 vtodos.add(_vt);
             }
@@ -206,9 +206,9 @@ public class VCalendar implements Serializable {
 
         Map<Integer, List<VEvent>> day_events = new HashMap<Integer, List<VEvent>>();
         for (VEvent _ve : getVevents(new Period(date, endDate))) {
-            List<Period> _periods = _ve.getPeriods(new Period(date, endDate));
-            if (_periods != null && !_periods.isEmpty()) {
-                for (Period p : _periods) {
+            List<Period> periods = _ve.getPeriods(new Period(date, endDate));
+            if (periods != null && !periods.isEmpty()) {
+                for (Period p : periods) {
                     Map<String, VEvent> vevents = new HashMap<String, VEvent>();
                     if (day_events.containsKey(p.getStart().get(Calendar.HOUR_OF_DAY))) {
                         for (VEvent _tve : day_events.get(p.getStart().get(Calendar.HOUR_OF_DAY))) {
@@ -344,12 +344,11 @@ public class VCalendar implements Serializable {
 
         List<VJournal> journals = getVjournals(new Period(date, endDate));
         Map<Integer, List<VJournal>> month_journals = new HashMap<Integer, List<VJournal>>();
-        for (int i = journals.size(); --i >= 0;) {
-            VJournal vj = journals.get(i);
+        for (VJournal vj : journals) {
             List<Period> periods = vj.getPeriods(new Period(date, endDate));
             if (periods != null && !periods.isEmpty()) {
-                for (int r = periods.size(); --r >= 0;) {
-                    Integer _day = Integer.valueOf(periods.get(r).getStart().get(Calendar.DAY_OF_MONTH));
+                for (Period p : periods) {
+                    Integer _day = Integer.valueOf(p.getStart().get(Calendar.DAY_OF_MONTH));
                     List<VJournal> vjournals = new ArrayList<VJournal>();
                     if (month_journals.containsKey(_day)) {
                         vjournals = month_journals.get(_day);
@@ -372,9 +371,8 @@ public class VCalendar implements Serializable {
      */
     public List<VEvent> getRecurrenceVevents(final Period period) {
         List<VEvent> vevents = new ArrayList<VEvent>();
-        Object[] uid = vevent.keySet().toArray();
-        for (int i = uid.length; --i >= 0;) {
-            VEvent ve = vevent.get(uid[i]);
+        for (Entry<String, VEvent> e : vevent.entrySet()) {
+            VEvent ve = e.getValue();
             List<Period> periods = ve.getPeriods(period);
             if (periods != null && !periods.isEmpty()) {
                 for (Period p : periods) {
@@ -400,8 +398,8 @@ public class VCalendar implements Serializable {
      */
     public List<VTodo> getRecurrenceVtodos(final Period period) {
         List<VTodo> vtodos = new ArrayList<VTodo>();
-        for (String id : vtodo.keySet()) {
-            VTodo vt = vtodo.get(id);
+        for (Entry<String, VTodo> e : vtodo.entrySet()) {
+            VTodo vt = e.getValue();
             List<Period> periods = vt.getPeriods(period);
             if (periods != null && !periods.isEmpty()) {
                 for (Period p : periods) {
@@ -461,12 +459,12 @@ public class VCalendar implements Serializable {
      */
     public List<VEvent> getVevents(final Period period) {
         Map<String, VEvent> vevents = new HashMap<String, VEvent>();
-        for (String id : vevent.keySet()) {
-            VEvent _ve = vevent.get(id);
-            List<Period> _dates = _ve.getPeriods(period);
+        for (Entry<String, VEvent> e : vevent.entrySet()) {
+            VEvent ve = e.getValue();
+            List<Period> _dates = ve.getPeriods(period);
             if (_dates != null && !_dates.isEmpty()) {
-                if (!vevents.containsKey(_ve.getUid())) {
-                    vevents.put(_ve.getUid(), _ve);
+                if (!vevents.containsKey(ve.getUid())) {
+                    vevents.put(ve.getUid(), ve);
                 }
             }
         }
@@ -492,8 +490,8 @@ public class VCalendar implements Serializable {
         VFreeBusy vfb = new VFreeBusy(vtimezone);
         vfb.setDTStart(period.getStart());
         vfb.setDTEnd(period.getEnd());
-        for (String id : vevent.keySet()) {
-            VEvent ve = vevent.get(id);
+        for (Entry<String, VEvent> e : vevent.entrySet()) {
+            VEvent ve = e.getValue();
             List<Period> periods = ve.getPeriodsBetween(period.getStart(), period.getEnd());
             if (periods != null && !periods.isEmpty()) {
                 for (Period p : periods) {
@@ -542,8 +540,8 @@ public class VCalendar implements Serializable {
      */
     public List<VJournal> getVjournals(final Period period) {
         Map<String, VJournal> vevents = new HashMap<String, VJournal>();
-        for (String id : vjournal.keySet()) {
-            VJournal vj = vjournal.get(id);
+        for (Entry<String, VJournal> e : vjournal.entrySet()) {
+            VJournal vj = e.getValue();
             List<Period> _periods = vj.getPeriods(period);
             if (_periods != null && !_periods.isEmpty()) {
                 if (!vevents.containsKey(vj.getUid())) {
@@ -587,8 +585,8 @@ public class VCalendar implements Serializable {
      */
     public List<VTodo> getVtodos(final Period period) {
         Map<String, VTodo> vevents = new HashMap<String, VTodo>();
-        for (String id : vtodo.keySet()) {
-            VTodo vt = vtodo.get(id);
+        for (Entry<String, VTodo> e : vtodo.entrySet()) {
+            VTodo vt = e.getValue();
             List<Period> periods = vt.getPeriods(period);
             if (periods != null && !periods.isEmpty()) {
                 if (!vevents.containsKey(vt.getUid())) {
@@ -619,12 +617,11 @@ public class VCalendar implements Serializable {
         endDate.set(java.util.Calendar.SECOND, 59);
         endDate.set(java.util.Calendar.MILLISECOND, 0);
         List<Integer> days = new ArrayList<Integer>();
-        for (int i = events.size(); --i >= 0;) {
-            VEvent ve = events.get(i);
+        for (VEvent ve : events) {
             List<Period> periods = ve.getPeriods(new Period(date, endDate));
             if (periods != null && !periods.isEmpty()) {
-                for (int j = periods.size(); --j >= 0;) {
-                    Integer _day = new Integer(periods.get(i).getStart().get(java.util.Calendar.DAY_OF_MONTH));
+                for (Period p : periods) {
+                    Integer _day = new Integer(p.getStart().get(java.util.Calendar.DAY_OF_MONTH));
                     if (!days.contains(_day)) {
                         days.add(_day);
                     }
@@ -783,7 +780,7 @@ public class VCalendar implements Serializable {
                         line = line.substring(line.indexOf(":") + 1);
                         try {
                             va.setRepeat(Integer.parseInt(line));
-                        } catch (NumberFormatException _ex) {
+                        } catch (NumberFormatException e) {
                         }
                     } else if (line.startsWith("DURATION")) {
                         line = line.substring(line.lastIndexOf(":") + 1);
@@ -861,7 +858,7 @@ public class VCalendar implements Serializable {
                             }
                         }
                     }
-                } catch (Exception _ex) {
+                } catch (NullPointerException e) {
                     throw new VCalendarException("VCALENDAR::VFREEBUSY::FREEBUSY::error::" + line);
                 }
             }
@@ -1525,21 +1522,15 @@ public class VCalendar implements Serializable {
             sb.append(vtimezone.toString());
         }
 
-        List<VEvent> events = getVevents();
-        for (int i = events.size(); --i >= 0;) {
-            VEvent ve = events.get(i);
+        for (VEvent ve : getVevents()) {
             sb.append(ve.toString(vtimezone));
         }
 
-        List<VTodo> todos = getVtodos();
-        for (int i = todos.size(); --i >= 0;) {
-            VTodo vt = todos.get(i);
+        for (VTodo vt : getVtodos()) {
             sb.append(vt.toString(vtimezone));
         }
 
-        List<VJournal> journals = getVjournals();
-        for (int i = journals.size(); --i >= 0;) {
-            VJournal vj = journals.get(i);
+        for (VJournal vj : getVjournals()) {
             sb.append(vj.toString(vtimezone));
         }
 
@@ -1593,7 +1584,6 @@ public class VCalendar implements Serializable {
      * 
      * @throws VCalendarException
      */
-    @SuppressWarnings("resource")
     public void write() throws VCalendarException {
         if (ical_file != null && ical_file.canWrite()) {
             // FileLock fl = new FileLock(ical_file);
