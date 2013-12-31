@@ -17,14 +17,11 @@
 package com.ricardolorenzo.icalendar;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -37,6 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.StringTokenizer;
+
+import com.ricardolorenzo.file.io.FileUtils;
+import com.ricardolorenzo.file.lock.FileLockException;
 
 /**
  * @author Ricardo_Lorenzo
@@ -1586,28 +1586,12 @@ public class VCalendar implements Serializable {
      */
     public void write() throws VCalendarException {
         if (ical_file != null && ical_file.canWrite()) {
-            // FileLock fl = new FileLock(ical_file);
-            BufferedOutputStream os = null;
             try {
-                os = new BufferedOutputStream(new FileOutputStream(ical_file));
-                // fl.lock();
-                try {
-                    os.write(toString().getBytes());
-                } finally {
-                    // fl.unlock();
-                }
-            } catch (FileNotFoundException e) {
+                FileUtils.writeFile(ical_file, toString());
+            } catch (FileLockException e) {
                 throw new VCalendarException(e);
             } catch (IOException e) {
                 throw new VCalendarException(e);
-                // } catch (FileLockException e) {
-                // throw new VCalendarException(e);
-            } finally {
-                try {
-                    os.close();
-                } catch (NullPointerException e) {
-                } catch (IOException e) {
-                }
             }
         }
     }
