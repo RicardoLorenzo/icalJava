@@ -47,67 +47,118 @@ public class VCalendar implements Serializable {
     protected static final String CRLF = "\r\n";
     public static final String prodid = "-//Ricardo Lorenzo//NONSGML Ricardo Lorenzo//EN";
     public static final String version = "2.0";
+
+    /**
+     * Return a list of <code>Integer</code> with days in a month that contains VEvent objects
+     * 
+     * @param date
+     * @param events
+     * @return
+     */
+    public static List<Integer> getVeventMonthDays(final Calendar date, final List<VEvent> events) {
+        final Calendar endDate = (java.util.Calendar) date.clone();
+        date.set(java.util.Calendar.DAY_OF_MONTH, 1);
+        date.set(java.util.Calendar.HOUR, 0);
+        date.set(java.util.Calendar.MINUTE, 0);
+        date.set(java.util.Calendar.SECOND, 1);
+        date.set(java.util.Calendar.MILLISECOND, 0);
+        endDate.set(java.util.Calendar.DAY_OF_MONTH, endDate.getMaximum(java.util.Calendar.DAY_OF_MONTH));
+        endDate.set(java.util.Calendar.HOUR, 23);
+        endDate.set(java.util.Calendar.MINUTE, 59);
+        endDate.set(java.util.Calendar.SECOND, 59);
+        endDate.set(java.util.Calendar.MILLISECOND, 0);
+        final List<Integer> days = new ArrayList<Integer>();
+        for (final VEvent ve : events) {
+            final List<Period> periods = ve.getPeriods(new Period(date, endDate));
+            if ((periods != null) && !periods.isEmpty()) {
+                for (final Period p : periods) {
+                    final Integer _day = new Integer(p.getStart().get(java.util.Calendar.DAY_OF_MONTH));
+                    if (!days.contains(_day)) {
+                        days.add(_day);
+                    }
+                }
+            }
+        }
+        return days;
+    }
+
+    private static final byte[] readBytes(final InputStream is) throws IOException {
+        final byte[] buffer = new byte[2048];
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final BufferedInputStream bufferInput = new BufferedInputStream(is);
+        try {
+            for (int i = bufferInput.read(buffer); i >= 0; i = bufferInput.read(buffer)) {
+                baos.write(buffer, 0, i);
+            }
+        } finally {
+            bufferInput.close();
+        }
+        return baos.toByteArray();
+    }
+
     private VTimeZone vtimezone;
     private VFreeBusy vfreebusy;
-    private Map<String, VEvent> vevent;
-    private Map<String, VTodo> vtodo;
-    private Map<String, VJournal> vjournal;
+    private final Map<String, VEvent> vevent;
+    private final Map<String, VTodo> vtodo;
+    private final Map<String, VJournal> vjournal;
     private String method;
     transient private File ical_file;
+
     transient private String line;
+
     transient private BufferedReader buffer;
 
     public VCalendar() throws VCalendarException {
-        vtimezone = new VTimeZone(null);
-        vevent = new HashMap<String, VEvent>();
-        vtodo = new HashMap<String, VTodo>();
-        vjournal = new HashMap<String, VJournal>();
+        this.vtimezone = new VTimeZone(null);
+        this.vevent = new HashMap<String, VEvent>();
+        this.vtodo = new HashMap<String, VTodo>();
+        this.vjournal = new HashMap<String, VJournal>();
     }
 
     public VCalendar(final File icalendar) throws VCalendarException {
         this();
-        ical_file = icalendar;
+        this.ical_file = icalendar;
 
-        if (ical_file.exists()) {
+        if (this.ical_file.exists()) {
             try {
-                InputStream is = new BufferedInputStream(new ByteArrayInputStream(readBytes(new FileInputStream(
-                        ical_file))));
-                buffer = new BufferedReader(new InputStreamReader(is));
+                final InputStream is = new BufferedInputStream(new ByteArrayInputStream(readBytes(new FileInputStream(
+                        this.ical_file))));
+                this.buffer = new BufferedReader(new InputStreamReader(is));
                 try {
                     parse();
                 } finally {
-                    buffer.close();
+                    this.buffer.close();
                 }
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new VCalendarException(e);
             }
-        }
-    }
-
-    public VCalendar(final String content) throws VCalendarException {
-        this();
-        try {
-            buffer = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(content.trim().getBytes())));
-            try {
-                parse();
-            } finally {
-                buffer.close();
-            }
-        } catch (IOException e) {
-            throw new VCalendarException(e);
         }
     }
 
     public VCalendar(final InputStream is) throws VCalendarException {
         this();
         try {
-            buffer = new BufferedReader(new InputStreamReader(is));
+            this.buffer = new BufferedReader(new InputStreamReader(is));
             try {
                 parse();
             } finally {
-                buffer.close();
+                this.buffer.close();
             }
-        } catch (IOException e) {
+        } catch (final IOException e) {
+            throw new VCalendarException(e);
+        }
+    }
+
+    public VCalendar(final String content) throws VCalendarException {
+        this();
+        try {
+            this.buffer = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(content.trim().getBytes())));
+            try {
+                parse();
+            } finally {
+                this.buffer.close();
+            }
+        } catch (final IOException e) {
             throw new VCalendarException(e);
         }
     }
@@ -118,7 +169,7 @@ public class VCalendar implements Serializable {
      * @param ve
      */
     public void addVevent(final VEvent ve) {
-        vevent.put(ve.getUid(), ve);
+        this.vevent.put(ve.getUid(), ve);
     }
 
     /**
@@ -127,7 +178,7 @@ public class VCalendar implements Serializable {
      * @param vj
      */
     public void addVjournal(final VJournal vj) {
-        vjournal.put(vj.getUid(), vj);
+        this.vjournal.put(vj.getUid(), vj);
     }
 
     /**
@@ -136,7 +187,7 @@ public class VCalendar implements Serializable {
      * @param vt
      */
     public void addVtodo(final VTodo vt) {
-        vtodo.put(vt.getUid(), vt);
+        this.vtodo.put(vt.getUid(), vt);
     }
 
     /**
@@ -145,9 +196,9 @@ public class VCalendar implements Serializable {
      * @return
      */
     public List<VTodo> getActiveVtodos() {
-        List<VTodo> vtodos = new ArrayList<VTodo>();
-        for (Entry<String, VTodo> e : vtodo.entrySet()) {
-            VTodo _vt = e.getValue();
+        final List<VTodo> vtodos = new ArrayList<VTodo>();
+        for (final Entry<String, VTodo> e : this.vtodo.entrySet()) {
+            final VTodo _vt = e.getValue();
             if (isActiveStatus(_vt.getStatus())) {
                 vtodos.add(_vt);
             }
@@ -156,211 +207,15 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return all VEvent objects related to the calendar object day.
-     * 
-     * @param date
-     * @return
-     */
-    public List<VEvent> getDayVevents(final Calendar date) {
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar _end = (java.util.Calendar) date.clone();
-        _end.add(Calendar.DAY_OF_MONTH, 1);
-
-        return getVevents(new Period(date, _end));
-    }
-
-    /**
-     * Return all VJournal objects related to the calendar object day.
-     * 
-     * @param date
-     * @return
-     */
-    public List<VJournal> getDayVjournals(final Calendar date) {
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar _end = (java.util.Calendar) date.clone();
-        _end.add(Calendar.DAY_OF_MONTH, 1);
-
-        return getVjournals(new Period(date, _end));
-    }
-
-    /**
-     * Return a map of VEvent objects related to the calendar object day. The key of this map is an
-     * <code>Integer</code> with the day hour (24h format).
-     * 
-     * @param date
-     * @return
-     */
-    public Map<Integer, List<VEvent>> getDayVeventsMap(final Calendar date) {
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar endDate = (java.util.Calendar) date.clone();
-        endDate.add(Calendar.DAY_OF_MONTH, 1);
-
-        Map<Integer, List<VEvent>> day_events = new HashMap<Integer, List<VEvent>>();
-        for (VEvent _ve : getVevents(new Period(date, endDate))) {
-            List<Period> periods = _ve.getPeriods(new Period(date, endDate));
-            if (periods != null && !periods.isEmpty()) {
-                for (Period p : periods) {
-                    Map<String, VEvent> vevents = new HashMap<String, VEvent>();
-                    if (day_events.containsKey(p.getStart().get(Calendar.HOUR_OF_DAY))) {
-                        for (VEvent _tve : day_events.get(p.getStart().get(Calendar.HOUR_OF_DAY))) {
-                            vevents.put(_tve.getUid(), _tve);
-                        }
-                    }
-                    if (!vevents.containsKey(_ve.getUid())) {
-                        vevents.put(_ve.getUid(), _ve);
-                    }
-                    day_events.put(p.getStart().get(Calendar.HOUR_OF_DAY), new ArrayList<VEvent>(vevents.values()));
-                }
-            }
-        }
-        return day_events;
-    }
-
-    /**
-     * Return all VTodo objects related to the calendar object day.
-     * 
-     * @param date
-     * @return
-     */
-    public List<VTodo> getDayVtodos(final Calendar date) {
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar _end = (java.util.Calendar) date.clone();
-        _end.add(Calendar.DAY_OF_MONTH, 1);
-
-        return getVtodos(new Period(date, _end));
-    }
-
-    /**
      * Return the method
      * 
      * @return
      */
     public String getMethod() {
-        if (method == null) {
+        if (this.method == null) {
             return "";
         }
-        return method;
-    }
-
-    /**
-     * Return all VEvent objects related to the calendar object month.
-     * 
-     * @param date
-     * @return
-     */
-    public List<VEvent> getMonthVevents(final Calendar date) {
-        date.set(java.util.Calendar.DAY_OF_MONTH, 1);
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar _end = (java.util.Calendar) date.clone();
-        _end.add(java.util.Calendar.MONTH, 1);
-
-        return getVevents(new Period(date, _end));
-    }
-
-    /**
-     * Return a map of VEvent objects related to the calendar object month. The key of this map is
-     * an <code>Integer</code> with the month day hour.
-     * 
-     * @param date
-     * @return
-     */
-    public Map<Integer, List<VEvent>> getMonthVeventsMap(final Calendar date) {
-        date.set(java.util.Calendar.DAY_OF_MONTH, 1);
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar endDate = (java.util.Calendar) date.clone();
-        endDate.add(java.util.Calendar.MONTH, 1);
-
-        Map<Integer, List<VEvent>> month_events = new HashMap<Integer, List<VEvent>>();
-        for (VEvent ve : getVevents(new Period(date, endDate))) {
-            List<Period> periods = ve.getPeriods(new Period(date, endDate));
-            if (periods != null && !periods.isEmpty()) {
-                for (Period p : periods) {
-                    Calendar offset = (Calendar) p.getStart().clone();
-                    for (; offset.before(p.getEnd()) && offset.before(endDate); offset.add(Calendar.DAY_OF_MONTH, 1)) {
-                        ArrayList<VEvent> vevents = new ArrayList<VEvent>();
-                        if (month_events.containsKey(offset.get(Calendar.DAY_OF_MONTH))) {
-                            vevents.addAll(month_events.get(offset.get(Calendar.DAY_OF_MONTH)));
-                        }
-                        vevents.add(ve);
-                        month_events.put(offset.get(Calendar.DAY_OF_MONTH), vevents);
-                    }
-                }
-            }
-        }
-        return month_events;
-    }
-
-    /**
-     * Return all VJournal objects related to the calendar object month.
-     * 
-     * @param date
-     * @return
-     */
-    public List<VJournal> getMonthVjournals(final Calendar date) {
-        date.set(java.util.Calendar.DAY_OF_MONTH, 1);
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar _end = (java.util.Calendar) date.clone();
-        _end.add(java.util.Calendar.MONTH, 1);
-
-        return getVjournals(new Period(date, _end));
-    }
-
-    /**
-     * Return a VJournal map related to the calendar object month. The key of the map is an
-     * <code>Integer</code> with the month day.
-     * 
-     * @param date
-     * @return
-     */
-    public Map<Integer, List<VJournal>> getMonthVjournalsMap(final Calendar date) {
-        date.set(java.util.Calendar.DAY_OF_MONTH, 1);
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar endDate = (java.util.Calendar) date.clone();
-        endDate.add(java.util.Calendar.MONTH, 1);
-
-        List<VJournal> journals = getVjournals(new Period(date, endDate));
-        Map<Integer, List<VJournal>> month_journals = new HashMap<Integer, List<VJournal>>();
-        for (VJournal vj : journals) {
-            List<Period> periods = vj.getPeriods(new Period(date, endDate));
-            if (periods != null && !periods.isEmpty()) {
-                for (Period p : periods) {
-                    Integer _day = Integer.valueOf(p.getStart().get(Calendar.DAY_OF_MONTH));
-                    List<VJournal> vjournals = new ArrayList<VJournal>();
-                    if (month_journals.containsKey(_day)) {
-                        vjournals = month_journals.get(_day);
-                    }
-                    if (!vjournals.contains(vj)) {
-                        vjournals.add(vj);
-                    }
-                    month_journals.put(_day, vjournals);
-                }
-            }
-        }
-        return month_journals;
+        return this.method;
     }
 
     /**
@@ -369,14 +224,14 @@ public class VCalendar implements Serializable {
      * @param period
      * @return
      */
-    public List<VEvent> getRecurrenceVevents(final Period period) {
-        List<VEvent> vevents = new ArrayList<VEvent>();
-        for (Entry<String, VEvent> e : vevent.entrySet()) {
-            VEvent ve = e.getValue();
-            List<Period> periods = ve.getPeriods(period);
-            if (periods != null && !periods.isEmpty()) {
-                for (Period p : periods) {
-                    VEvent vep = new VEvent();
+    public List<VEvent> getRecurrentVevents(final Period period) {
+        final List<VEvent> vevents = new ArrayList<VEvent>();
+        for (final Entry<String, VEvent> e : this.vevent.entrySet()) {
+            final VEvent ve = e.getValue();
+            final List<Period> periods = ve.getPeriods(period);
+            if ((periods != null) && !periods.isEmpty()) {
+                for (final Period p : periods) {
+                    final VEvent vep = new VEvent();
                     vep.setSummary(ve.getSummary());
                     vep.setDTStamp(ve.getDTStamp());
                     vep.setUid(ve.getUid());
@@ -396,14 +251,14 @@ public class VCalendar implements Serializable {
      * @param period
      * @return
      */
-    public List<VTodo> getRecurrenceVtodos(final Period period) {
-        List<VTodo> vtodos = new ArrayList<VTodo>();
-        for (Entry<String, VTodo> e : vtodo.entrySet()) {
-            VTodo vt = e.getValue();
-            List<Period> periods = vt.getPeriods(period);
-            if (periods != null && !periods.isEmpty()) {
-                for (Period p : periods) {
-                    VTodo vtp = new VTodo();
+    public List<VTodo> getRecurrentVtodos(final Period period) {
+        final List<VTodo> vtodos = new ArrayList<VTodo>();
+        for (final Entry<String, VTodo> e : this.vtodo.entrySet()) {
+            final VTodo vt = e.getValue();
+            final List<Period> periods = vt.getPeriods(period);
+            if ((periods != null) && !periods.isEmpty()) {
+                for (final Period p : periods) {
+                    final VTodo vtp = new VTodo();
                     vtp.setSummary(vt.getSummary());
                     vtp.setDTStamp(vt.getDTStamp());
                     vtp.setUid(vt.getUid());
@@ -423,7 +278,7 @@ public class VCalendar implements Serializable {
      * @return
      */
     public VTimeZone getTimeZone() {
-        return vtimezone;
+        return this.vtimezone;
     }
 
     /**
@@ -434,8 +289,8 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public VEvent getVevent(final String uid) throws VCalendarException {
-        if (uid != null && vevent.containsKey(uid)) {
-            return vevent.get(uid);
+        if ((uid != null) && this.vevent.containsKey(uid)) {
+            return this.vevent.get(uid);
         }
         throw new VCalendarException("vevent not found");
     }
@@ -446,8 +301,8 @@ public class VCalendar implements Serializable {
      * @return
      */
     public List<VEvent> getVevents() {
-        List<VEvent> values = new ArrayList<VEvent>();
-        values.addAll(vevent.values());
+        final List<VEvent> values = new ArrayList<VEvent>();
+        values.addAll(this.vevent.values());
         return values;
     }
 
@@ -458,11 +313,11 @@ public class VCalendar implements Serializable {
      * @return
      */
     public List<VEvent> getVevents(final Period period) {
-        Map<String, VEvent> vevents = new HashMap<String, VEvent>();
-        for (Entry<String, VEvent> e : vevent.entrySet()) {
-            VEvent ve = e.getValue();
-            List<Period> _dates = ve.getPeriods(period);
-            if (_dates != null && !_dates.isEmpty()) {
+        final Map<String, VEvent> vevents = new HashMap<String, VEvent>();
+        for (final Entry<String, VEvent> e : this.vevent.entrySet()) {
+            final VEvent ve = e.getValue();
+            final List<Period> _dates = ve.getPeriods(period);
+            if ((_dates != null) && !_dates.isEmpty()) {
                 if (!vevents.containsKey(ve.getUid())) {
                     vevents.put(ve.getUid(), ve);
                 }
@@ -472,12 +327,137 @@ public class VCalendar implements Serializable {
     }
 
     /**
+     * Return all VEvent objects related to the calendar object day.
+     * 
+     * @param date
+     * @return
+     */
+    public List<VEvent> getVeventsForDay(final Calendar date) {
+        return getVevents(Period.getDayPeriod(date));
+    }
+
+    /**
+     * Return all VEvent objects related to the calendar object month.
+     * 
+     * @param date
+     * @return
+     */
+    public List<VEvent> getVeventsForMonth(final Calendar date) {
+        return getVevents(Period.getMonthPeriod(date));
+    }
+
+    /**
+     * Return VEvent objects related to Calendar object week.
+     * 
+     * @param date
+     * @return
+     */
+    public List<VEvent> getVeventsForWeek(final Calendar date) {
+        return getVevents(Period.getWeekPeriod(date));
+    }
+
+    /**
+     * Return a map of VEvent objects related to the calendar object day. The key of this map is an
+     * <code>Integer</code> with the day hour (24h format).
+     * 
+     * @param date
+     * @return
+     */
+    public Map<Integer, List<VEvent>> getVeventsMapForDay(final Calendar date) {
+        final Period pdate = Period.getDayPeriod(date);
+        final Map<Integer, List<VEvent>> day_events = new HashMap<Integer, List<VEvent>>();
+        for (final VEvent ve : getVevents()) {
+            final List<Period> periods = ve.getPeriods(pdate);
+            if (periods != null) {
+                for (final Period p : periods) {
+                    final Map<String, VEvent> vevents = new HashMap<String, VEvent>();
+                    final Integer day = Integer.valueOf(p.getStart().get(Calendar.DAY_OF_MONTH));
+                    if (day_events.containsKey(day)) {
+                        for (final VEvent existant_ve : day_events.get(day)) {
+                            vevents.put(existant_ve.getUid(), existant_ve);
+                        }
+                    }
+                    if (!vevents.containsKey(ve.getUid())) {
+                        vevents.put(ve.getUid(), ve);
+                    }
+                    day_events.put(day, new ArrayList<VEvent>(vevents.values()));
+                }
+            }
+        }
+        return day_events;
+    }
+
+    /**
+     * Return a map of VEvent objects related to the calendar object month. The key of this map is
+     * an <code>Integer</code> with the month day hour.
+     * 
+     * @param date
+     * @return
+     */
+    public Map<Integer, List<VEvent>> getVeventsMapForMonth(final Calendar date) {
+        final Period pdate = Period.getMonthPeriod(date);
+        final Map<Integer, List<VEvent>> month_events = new HashMap<Integer, List<VEvent>>();
+        for (final VEvent ve : getVevents(pdate)) {
+            final List<Period> periods = ve.getPeriods(pdate);
+            if (periods != null) {
+                for (final Period p : periods) {
+                    final Map<String, VEvent> vevents = new HashMap<String, VEvent>();
+                    for (final Integer day : p.getMonthDays(date)) {
+                        if (month_events.containsKey(day)) {
+                            for (final VEvent existant_ve : month_events.get(day)) {
+                                vevents.put(existant_ve.getUid(), existant_ve);
+                            }
+                        }
+                        if (!vevents.containsKey(ve.getUid())) {
+                            vevents.put(ve.getUid(), ve);
+                        }
+                        month_events.put(day, new ArrayList<VEvent>(vevents.values()));
+                    }
+                }
+            }
+        }
+        return month_events;
+    }
+
+    /**
+     * Return a map of VEvent objects related to the calendar object day. The key of this map is an
+     * <code>Integer</code> with the week day.
+     * 
+     * @param date
+     * @return
+     */
+    public Map<Integer, List<VEvent>> getVeventsMapForWeek(final Calendar date) {
+        final Period pdate = Period.getWeekPeriod(date);
+        final Map<Integer, List<VEvent>> week_events = new HashMap<Integer, List<VEvent>>();
+        for (final VEvent ve : getVevents(pdate)) {
+            final List<Period> periods = ve.getPeriods(pdate);
+            if ((periods != null) && !periods.isEmpty()) {
+                for (final Period p : periods) {
+                    final Map<String, VEvent> vevents = new HashMap<String, VEvent>();
+                    for (final Integer day : p.getWeekDays(date)) {
+                        if (week_events.containsKey(day)) {
+                            for (final VEvent existant_ve : week_events.get(day)) {
+                                vevents.put(existant_ve.getUid(), existant_ve);
+                            }
+                        }
+                        if (!vevents.containsKey(ve.getUid())) {
+                            vevents.put(ve.getUid(), ve);
+                        }
+                        week_events.put(day, new ArrayList<VEvent>(vevents.values()));
+                    }
+                }
+            }
+        }
+        return week_events;
+    }
+
+    /**
      * Return a VFreeBusy object with the availability.
      * 
      * @return VFreeBusy
      */
     public VFreeBusy getVFreeBusy() {
-        return vfreebusy;
+        return this.vfreebusy;
     }
 
     /**
@@ -487,14 +467,14 @@ public class VCalendar implements Serializable {
      * @return
      */
     public VFreeBusy getVFreeBusy(final Period period) {
-        VFreeBusy vfb = new VFreeBusy(vtimezone);
+        final VFreeBusy vfb = new VFreeBusy(this.vtimezone);
         vfb.setDTStart(period.getStart());
         vfb.setDTEnd(period.getEnd());
-        for (Entry<String, VEvent> e : vevent.entrySet()) {
-            VEvent ve = e.getValue();
-            List<Period> periods = ve.getPeriodsBetween(period.getStart(), period.getEnd());
-            if (periods != null && !periods.isEmpty()) {
-                for (Period p : periods) {
+        for (final Entry<String, VEvent> e : this.vevent.entrySet()) {
+            final VEvent ve = e.getValue();
+            final List<Period> periods = ve.getPeriodsBetween(period.getStart(), period.getEnd());
+            if ((periods != null) && !periods.isEmpty()) {
+                for (final Period p : periods) {
                     vfb.addBusy(p);
                 }
             }
@@ -515,8 +495,8 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public VJournal getVjournal(final String uid) throws VCalendarException {
-        if (uid != null && vjournal.containsKey(uid)) {
-            return vjournal.get(uid);
+        if ((uid != null) && this.vjournal.containsKey(uid)) {
+            return this.vjournal.get(uid);
         }
         throw new VCalendarException("vjournal not found");
     }
@@ -527,8 +507,8 @@ public class VCalendar implements Serializable {
      * @return
      */
     public List<VJournal> getVjournals() {
-        List<VJournal> _values = new ArrayList<VJournal>();
-        _values.addAll(vjournal.values());
+        final List<VJournal> _values = new ArrayList<VJournal>();
+        _values.addAll(this.vjournal.values());
         return _values;
     }
 
@@ -539,17 +519,70 @@ public class VCalendar implements Serializable {
      * @return
      */
     public List<VJournal> getVjournals(final Period period) {
-        Map<String, VJournal> vevents = new HashMap<String, VJournal>();
-        for (Entry<String, VJournal> e : vjournal.entrySet()) {
-            VJournal vj = e.getValue();
-            List<Period> _periods = vj.getPeriods(period);
-            if (_periods != null && !_periods.isEmpty()) {
+        final Map<String, VJournal> vevents = new HashMap<String, VJournal>();
+        for (final Entry<String, VJournal> e : this.vjournal.entrySet()) {
+            final VJournal vj = e.getValue();
+            final List<Period> _periods = vj.getPeriods(period);
+            if ((_periods != null) && !_periods.isEmpty()) {
                 if (!vevents.containsKey(vj.getUid())) {
                     vevents.put(vj.getUid(), vj);
                 }
             }
         }
         return new ArrayList<VJournal>(vevents.values());
+    }
+
+    /**
+     * Return all VJournal objects related to the calendar object day.
+     * 
+     * @param date
+     * @return
+     */
+    public List<VJournal> getVjournalsForDay(final Calendar date) {
+        return getVjournals(Period.getDayPeriod(date));
+    }
+
+    /**
+     * Return all VJournal objects related to the calendar object month.
+     * 
+     * @param date
+     * @return
+     */
+    public List<VJournal> getVjournalsForMonth(final Calendar date) {
+        return getVjournals(Period.getMonthPeriod(date));
+    }
+
+    /**
+     * Return a VJournal map related to the calendar object month. The key of the map is an
+     * <code>Integer</code> with the month day.
+     * 
+     * @param date
+     * @return
+     */
+    public Map<Integer, List<VJournal>> getVjournalsMapForMonth(final Calendar date) {
+        final Period pdate = Period.getMonthPeriod(date);
+        final List<VJournal> journals = getVjournals(pdate);
+        final Map<Integer, List<VJournal>> month_journals = new HashMap<Integer, List<VJournal>>();
+        for (final VJournal vj : journals) {
+            final List<Period> periods = vj.getPeriods(pdate);
+            if ((periods != null) && !periods.isEmpty()) {
+                for (final Period p : periods) {
+                    final Map<String, VJournal> vjournals = new HashMap<String, VJournal>();
+                    for (final Integer day : p.getMonthDays(date)) {
+                        if (month_journals.containsKey(day)) {
+                            for (final VJournal existant_vj : month_journals.get(day)) {
+                                vjournals.put(existant_vj.getUid(), existant_vj);
+                            }
+                        }
+                        if (!vjournals.containsKey(vj.getUid())) {
+                            vjournals.put(vj.getUid(), vj);
+                        }
+                        month_journals.put(day, new ArrayList<VJournal>(vjournals.values()));
+                    }
+                }
+            }
+        }
+        return month_journals;
     }
 
     /**
@@ -560,8 +593,8 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public VTodo getVtodo(final String uid) throws VCalendarException {
-        if (uid != null && vtodo.containsKey(uid)) {
-            return vtodo.get(uid);
+        if ((uid != null) && this.vtodo.containsKey(uid)) {
+            return this.vtodo.get(uid);
         }
         throw new VCalendarException("vtodo not found");
     }
@@ -572,8 +605,8 @@ public class VCalendar implements Serializable {
      * @return
      */
     public List<VTodo> getVtodos() {
-        List<VTodo> values = new ArrayList<VTodo>();
-        values.addAll(vtodo.values());
+        final List<VTodo> values = new ArrayList<VTodo>();
+        values.addAll(this.vtodo.values());
         return values;
     }
 
@@ -584,11 +617,11 @@ public class VCalendar implements Serializable {
      * @return
      */
     public List<VTodo> getVtodos(final Period period) {
-        Map<String, VTodo> vevents = new HashMap<String, VTodo>();
-        for (Entry<String, VTodo> e : vtodo.entrySet()) {
-            VTodo vt = e.getValue();
-            List<Period> periods = vt.getPeriods(period);
-            if (periods != null && !periods.isEmpty()) {
+        final Map<String, VTodo> vevents = new HashMap<String, VTodo>();
+        for (final Entry<String, VTodo> e : this.vtodo.entrySet()) {
+            final VTodo vt = e.getValue();
+            final List<Period> periods = vt.getPeriods(period);
+            if ((periods != null) && !periods.isEmpty()) {
                 if (!vevents.containsKey(vt.getUid())) {
                     vevents.put(vt.getUid(), vt);
                 }
@@ -598,95 +631,13 @@ public class VCalendar implements Serializable {
     }
 
     /**
-     * Return a list of <code>Integer</code> with days in a month that contains VEvent objects
-     * 
-     * @param date
-     * @param events
-     * @return
-     */
-    public static List<Integer> getVeventMonthDays(final Calendar date, final List<VEvent> events) {
-        Calendar endDate = (java.util.Calendar) date.clone();
-        date.set(java.util.Calendar.DAY_OF_MONTH, 1);
-        date.set(java.util.Calendar.HOUR, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 1);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        endDate.set(java.util.Calendar.DAY_OF_MONTH, endDate.getMaximum(java.util.Calendar.DAY_OF_MONTH));
-        endDate.set(java.util.Calendar.HOUR, 23);
-        endDate.set(java.util.Calendar.MINUTE, 59);
-        endDate.set(java.util.Calendar.SECOND, 59);
-        endDate.set(java.util.Calendar.MILLISECOND, 0);
-        List<Integer> days = new ArrayList<Integer>();
-        for (VEvent ve : events) {
-            List<Period> periods = ve.getPeriods(new Period(date, endDate));
-            if (periods != null && !periods.isEmpty()) {
-                for (Period p : periods) {
-                    Integer _day = new Integer(p.getStart().get(java.util.Calendar.DAY_OF_MONTH));
-                    if (!days.contains(_day)) {
-                        days.add(_day);
-                    }
-                }
-            }
-        }
-        return days;
-    }
-
-    /**
-     * Return VEvent objects related to Calendar object week.
+     * Return all VTodo objects related to the calendar object day.
      * 
      * @param date
      * @return
      */
-    public List<VEvent> getWeekVevents(final Calendar date) {
-        Calendar endDate = (java.util.Calendar) date.clone();
-        date.set(java.util.Calendar.DAY_OF_WEEK, date.getFirstDayOfWeek());
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        endDate.set(java.util.Calendar.WEEK_OF_MONTH, 1);
-
-        return getVevents(new Period(date, endDate));
-    }
-
-    /**
-     * Return a map of VEvent objects related to the calendar object day. The key of this map is an
-     * <code>Integer</code> with the week day.
-     * 
-     * @param date
-     * @return
-     */
-    public Map<Integer, List<VEvent>> getWeekVeventsMap(final Calendar date) {
-        date.set(java.util.Calendar.DAY_OF_WEEK, date.getFirstDayOfWeek());
-        date.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 0);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        Calendar endDate = (java.util.Calendar) date.clone();
-        endDate.set(java.util.Calendar.WEEK_OF_MONTH, 1);
-
-        Map<Integer, List<VEvent>> week_events = new HashMap<Integer, List<VEvent>>();
-        for (VEvent ve : getVevents(new Period(date, endDate))) {
-            List<Period> periods = ve.getPeriods(new Period(date, endDate));
-            if (periods != null && !periods.isEmpty()) {
-                for (Period p : periods) {
-                    Calendar offset = (Calendar) p.getStart().clone();
-                    for (; offset.before(p.getEnd()) && offset.before(endDate); offset.add(Calendar.DAY_OF_WEEK, 1)) {
-                        Map<String, VEvent> vevents = new HashMap<String, VEvent>();
-                        if (week_events.containsKey(offset.get(Calendar.DAY_OF_WEEK))) {
-                            for (VEvent _tve : week_events.get(offset.get(Calendar.DAY_OF_WEEK))) {
-                                vevents.put(_tve.getUid(), _tve);
-                            }
-                        }
-                        if (!vevents.containsKey(ve.getUid())) {
-                            vevents.put(ve.getUid(), ve);
-                        }
-                        week_events.put(offset.get(Calendar.DAY_OF_WEEK), new ArrayList<VEvent>(vevents.values()));
-                    }
-                }
-            }
-        }
-        return week_events;
+    public List<VTodo> getVtodosForDay(final Calendar date) {
+        return getVtodos(Period.getDayPeriod(date));
     }
 
     /**
@@ -697,7 +648,7 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public boolean hasVevent(final String uid) throws VCalendarException {
-        if (uid != null && vevent.containsKey(uid)) {
+        if ((uid != null) && this.vevent.containsKey(uid)) {
             return true;
         }
         return false;
@@ -711,7 +662,7 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public boolean hasVtodo(final String uid) throws VCalendarException {
-        if (uid != null && vtodo.containsKey(uid)) {
+        if ((uid != null) && this.vtodo.containsKey(uid)) {
             return true;
         }
         return false;
@@ -721,43 +672,44 @@ public class VCalendar implements Serializable {
         if (status == null) {
             return true;
         }
-        List<String> active_status = new ArrayList<String>(Arrays.asList(new String[] { "NEEDS-ACTION", "IN-PROCESS" }));
+        final List<String> active_status = new ArrayList<String>(Arrays.asList(new String[] { "NEEDS-ACTION",
+                "IN-PROCESS" }));
         return active_status.contains(status.toUpperCase());
     }
 
     private void nextLine() throws IOException {
-        line = "";
-        if (buffer != null && buffer.ready()) {
-            line = buffer.readLine();
+        this.line = "";
+        if ((this.buffer != null) && this.buffer.ready()) {
+            this.line = this.buffer.readLine();
         }
     }
 
     private void parse() throws IOException, VCalendarException {
-        vtimezone = new VTimeZone(null);
-        for (nextLine(); line != null; nextLine()) {
-            if (line.startsWith("METHOD")) {
-                method = line.substring(line.indexOf(":") + 1);
-            } else if (line.startsWith("BEGIN:VTIMEZONE")) {
+        this.vtimezone = new VTimeZone(null);
+        for (nextLine(); this.line != null; nextLine()) {
+            if (this.line.startsWith("METHOD")) {
+                this.method = this.line.substring(this.line.indexOf(":") + 1);
+            } else if (this.line.startsWith("BEGIN:VTIMEZONE")) {
                 /**
                  * VTIMEZONE
                  */
                 parseVTimeZone();
-            } else if (line.startsWith("BEGIN:VFREEBUSY")) {
+            } else if (this.line.startsWith("BEGIN:VFREEBUSY")) {
                 /**
                  * VFREEBUSY
                  */
                 parseVFreeBusy();
-            } else if (line.startsWith("BEGIN:VEVENT")) {
+            } else if (this.line.startsWith("BEGIN:VEVENT")) {
                 /**
                  * VEVENT
                  */
                 parseVEvent();
-            } else if (line.indexOf("BEGIN:VTODO") != -1) {
+            } else if (this.line.indexOf("BEGIN:VTODO") != -1) {
                 /**
                  * VTODO
                  */
                 parseVTodo();
-            } else if (line.indexOf("BEGIN:VJOURNAL") != -1) {
+            } else if (this.line.indexOf("BEGIN:VJOURNAL") != -1) {
                 /**
                  * VJournal
                  */
@@ -766,557 +718,9 @@ public class VCalendar implements Serializable {
         }
     }
 
-    private void parseVAlarm(final VEvent ve) throws VCalendarException {
-        VAlarm va = new VAlarm();
-        try {
-            for (nextLine(); line != null; nextLine()) {
-                if (line.startsWith("END:VALARM")) {
-                    ve.addAlarm(va);
-                    break;
-                } else {
-                    if (line.startsWith("TRIGGER")) {
-                        va.setTrigger(new Trigger(line));
-                    } else if (line.startsWith("REPEAT")) {
-                        line = line.substring(line.indexOf(":") + 1);
-                        try {
-                            va.setRepeat(Integer.parseInt(line));
-                        } catch (NumberFormatException e) {
-                        }
-                    } else if (line.startsWith("DURATION")) {
-                        line = line.substring(line.lastIndexOf(":") + 1);
-                        va.setDuration(new Duration(line));
-                    } else if (line.startsWith("DESCRIPTION")) {
-                        line = line.substring(line.lastIndexOf(":") + 1);
-                        va.setDescription(line);
-                    } else if (line.startsWith("ACTION")) {
-                        line = line.substring(line.lastIndexOf(":") + 1);
-                        va.setAction(line);
-                    } else if (line.startsWith("X-")) {
-                        va.addExtended(line);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            throw new VCalendarException("VCALENDAR::VEVENT::VALARM::error::" + line);
-        }
-    }
-
-    private void parseVFreeBusy() throws IOException, VCalendarException {
-        VFreeBusy vfb = new VFreeBusy(vtimezone);
-        for (nextLine(); line != null; nextLine()) {
-            if (line.startsWith("END:VFREEBUSY")) {
-                vfreebusy = vfb;
-                break;
-            } else if (line.startsWith("DTSTART")) {
-                try {
-                    line = line.substring(line.indexOf(":") + 1);
-                    vfb.setDTStart(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                } catch (Exception e) {
-                    throw new VCalendarException("VCALENDAR::VFREEBUSY::DTSTART::error::" + line);
-                }
-            } else if (line.startsWith("DTEND")) {
-                try {
-                    line = line.substring(line.indexOf(":") + 1);
-                    vfb.setDTEnd(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                } catch (Exception e) {
-                    throw new VCalendarException("VCALENDAR::VFREEBUSY::DTEND::error::" + line);
-                }
-            } else if (line.startsWith("ATTENDEE") && line.indexOf(":") > 0) {
-                try {
-                    Person p = new Person(line, Person.ATTENDEE);
-                    vfb.setAttendee(p.getMailTo(), p);
-                } catch (Exception e) {
-                    throw new VCalendarException("VCALENDAR::VFREEBUSY::ATTENDEE::error::" + line);
-                }
-            } else if (line.startsWith("ORGANIZER") && line.indexOf(":") > 0) {
-                try {
-                    Person p = new Person(line, Person.ORGANIZER);
-                    vfb.setOrganizer(p.getMailTo(), p);
-                } catch (Exception e) {
-                    throw new VCalendarException("VCALENDAR::VFREEBUSY::ORGANIZER::error::" + line);
-                }
-            } else if (line.startsWith("FREEBUSY")) {
-                line = line.substring(line.indexOf(":") + 1);
-                try {
-                    StringTokenizer st = new StringTokenizer(line, ",");
-                    while (st.hasMoreTokens()) {
-                        String t = st.nextToken();
-                        if (t.contains("/")) {
-                            try {
-                                Calendar start = DateTime.getCalendarFromString(vtimezone.getTimeZone(),
-                                        t.substring(0, t.indexOf("/")));
-                                Calendar end = DateTime.getCalendarFromString(vtimezone.getTimeZone(),
-                                        t.substring(t.indexOf("/") + 1));
-                                vfb.addBusy(new Period(start, end));
-                            } catch (Exception e) {
-                                Calendar start = DateTime.getCalendarFromString(vtimezone.getTimeZone(),
-                                        t.substring(0, t.indexOf("/")));
-                                Duration d = new Duration(t.substring(t.indexOf("/") + 1));
-                                Calendar end = Calendar.getInstance();
-                                end.setTimeInMillis(start.getTimeInMillis() + d.getMilliseconds());
-                                vfb.addBusy(new Period(start, end));
-                            }
-                        }
-                    }
-                } catch (NullPointerException e) {
-                    throw new VCalendarException("VCALENDAR::VFREEBUSY::FREEBUSY::error::" + line);
-                }
-            }
-        }
-    }
-
-    private void parseVEvent() throws IOException, VCalendarException {
-        VEvent ve = new VEvent();
-        for (nextLine(); line != null; nextLine()) {
-            if (line.startsWith("END:VEVENT")) {
-                if (vevent.containsKey(ve.getUid())) {
-                    if (!vevent.get(ve.getUid()).hasRecurrence()) {
-                        vevent.put(ve.getUid(), ve);
-                    }
-                } else {
-                    vevent.put(ve.getUid(), ve);
-                }
-                break;
-            } else if (line.startsWith("BEGIN:VALARM")) {
-                /**
-                 * VALARM
-                 */
-                parseVAlarm(ve);
-            } else {
-                if (line.startsWith("CATEGORIES")) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        StringTokenizer st = new StringTokenizer(line, ",");
-                        if (st.countTokens() > 0) {
-                            while (st.hasMoreTokens()) {
-                                ve.addCategory(st.nextToken());
-                            }
-                        }
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::CATEGORIES::error::" + line);
-                    }
-                } else if (line.startsWith("SUMMARY") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setSummary(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::LOCATION::error::" + line);
-                    }
-                } else if (line.startsWith("LOCATION") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setLocation(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::LOCATION::error::" + line);
-                    }
-                } else if (line.startsWith("CREATED") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setCreated(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::CREATED::error::" + line);
-                    }
-                } else if (line.startsWith("LAST-MODIFIED") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setLastModified(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::LAST-MODIFIED::error::" + line);
-                    }
-                } else if (line.startsWith("DESCRIPTION") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setDescription(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::DESCRIPTION::error::" + line);
-                    }
-                } else if (line.startsWith("DTSTAMP") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setDTStamp(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::DTSTAMP::error::" + line);
-                    }
-                } else if (line.startsWith("UID") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setUid(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::UID::error::" + line);
-                    }
-                } else if (line.startsWith("DTSTART") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setDTStart(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::DTSTART::error::" + line);
-                    }
-                } else if (line.startsWith("DTEND") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setDTEnd(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::DTEND::error::" + line);
-                    }
-                } else if (line.startsWith("EXDATE") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.addExDate(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::EXDATE::error::" + line);
-                    }
-                } else if (line.startsWith("STATUS") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setStatus(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::STATUS::error::" + line);
-                    }
-                } else if (line.startsWith("CLASS") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setClassType(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::CLASS::error::" + line);
-                    }
-                } else if (line.startsWith("ATTENDEE") && line.indexOf(":") > 0) {
-                    try {
-                        Person p = new Person(line, Person.ATTENDEE);
-                        ve.setAttendee(p.getMailTo(), p);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::ATTENDEE::error::" + line);
-                    }
-                } else if (line.startsWith("ORGANIZER") && line.indexOf(":") > 0) {
-                    try {
-                        Person p = new Person(line, Person.ORGANIZER);
-                        ve.setOrganizer(p.getMailTo(), p);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::ORGANIZER::error::" + line);
-                    }
-                } else if (line.startsWith("RRULE") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        ve.setRRule(parseRRuleFromLine(line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VEVENT::RRULE::error::" + line);
-                    }
-                } else if (line.startsWith("X-")) {
-                    ve.addExtended(line);
-                }
-            }
-        }
-    }
-
-    private void parseVJournal() throws IOException, VCalendarException {
-        VJournal vj = new VJournal();
-        for (nextLine(); line != null; nextLine()) {
-            if (line.isEmpty()) {
-                nextLine();
-            }
-            if (line.indexOf("END:VJOURNAL") != -1) {
-                vjournal.put(vj.getUid(), vj);
-                break;
-            } else {
-                if (line.startsWith("CATEGORIES")) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        StringTokenizer st = new StringTokenizer(line, ",");
-                        if (st.countTokens() > 0) {
-                            while (st.hasMoreTokens()) {
-                                vj.addCategory(st.nextToken());
-                            }
-                        }
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::CATEGORIES::error::" + line);
-                    }
-                } else if (line.startsWith("SUMMARY") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vj.setSummary(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::SUMMARY::error::" + line);
-                    }
-                } else if (line.startsWith("DESCRIPTION") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vj.setDescription(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::DESCRIPTION::error::" + line);
-                    }
-                } else if (line.startsWith("CREATED") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vj.setCreated(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::CREATED::error::" + line);
-                    }
-                } else if (line.startsWith("UID") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vj.setUid(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::UID::error::" + line);
-                    }
-                } else if (line.startsWith("DTSTART") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vj.setDTStart(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::DTSTART::error::" + line);
-                    }
-                } else if (line.startsWith("STATUS") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vj.setStatus(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::STATUS::error::" + line);
-                    }
-                } else if (line.startsWith("CLASS") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vj.setClassType(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::CLASS::error::" + line);
-                    }
-                } else if (line.startsWith("ATTENDEE") && line.indexOf(":") > 0) {
-                    try {
-                        Person p = new Person(line, Person.ATTENDEE);
-                        vj.setAttendee(p.getMailTo(), p);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::ATTENDEE::error::" + line);
-                    }
-                } else if (line.startsWith("ORGANIZER") && line.indexOf(":") > 0) {
-                    try {
-                        Person p = new Person(line, Person.ORGANIZER);
-                        vj.setOrganizer(p.getMailTo(), p);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::ORGANIZER::error::" + line);
-                    }
-                } else if (line.startsWith("RRULE") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vj.setRRule(parseRRuleFromLine(line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VJOURNAL::RRULE::error::" + line);
-                    }
-                } else if (line.startsWith("X-")) {
-                    vj.addExtended(line);
-                }
-            }
-        }
-    }
-
-    private void parseVTimeZone() throws IOException, VCalendarException {
-        VTimeZone vtz = new VTimeZone(null);
-        for (nextLine(); line != null; nextLine()) {
-            if (line.startsWith("END:VTIMEZONE")) {
-                vtimezone = vtz;
-                break;
-            } else if (line.startsWith("TZID")) {
-                line = line.substring(line.indexOf(":") + 1);
-                vtz.setTZID(line);
-            } else if (line.startsWith("BEGIN:STANDARD")) {
-                for (nextLine(); line != null; nextLine()) {
-                    if (line.startsWith("END:STANDARD")) {
-                        break;
-                    } else if (line.startsWith("RRULE")) {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vtz.setStandardRRule(parseRRuleFromLine(line));
-                    }
-                }
-            } else if (line.startsWith("BEGIN:DAYLIGHT")) {
-                for (nextLine(); line != null; nextLine()) {
-                    if (line.startsWith("END:DAYLIGHT")) {
-                        break;
-                    } else if (line.startsWith("RRULE")) {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vtz.setDayLightRRule(parseRRuleFromLine(line));
-                    }
-                }
-            }
-        }
-    }
-
-    private void parseVTodo() throws IOException, VCalendarException {
-        VTodo vt = new VTodo();
-        for (nextLine(); line != null; nextLine()) {
-            if (line.isEmpty()) {
-                nextLine();
-            }
-            if (line.indexOf("END:VTODO") != -1) {
-                vtodo.put(vt.getUid(), vt);
-                break;
-            } else if (line.startsWith("BEGIN:VALARM")) {
-                VAlarm va = new VAlarm();
-                try {
-                    for (nextLine(); line != null; nextLine()) {
-                        if (line.startsWith("END:VALARM")) {
-                            vt.addAlarm(va);
-                            break;
-                        } else {
-                            if (line.startsWith("TRIGGER")) {
-                                va.setTrigger(new Trigger(line));
-                            } else if (line.startsWith("REPEAT")) {
-                                line = line.substring(line.indexOf(":") + 1);
-                                try {
-                                    va.setRepeat(Integer.parseInt(line));
-                                } catch (NumberFormatException e) {
-                                }
-                            } else if (line.startsWith("DURATION")) {
-                                line = line.substring(line.lastIndexOf(":") + 1);
-                                va.setDuration(new Duration(line));
-                            } else if (line.startsWith("DESCRIPTION")) {
-                                line = line.substring(line.lastIndexOf(":") + 1);
-                                va.setDescription(line);
-                            } else if (line.startsWith("ACTION")) {
-                                line = line.substring(line.lastIndexOf(":") + 1);
-                                va.setAction(line);
-                            } else if (line.startsWith("X-")) {
-                                va.addExtended(line);
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    throw new VCalendarException("VCALENDAR::VTODO::VALARM::error::" + line);
-                }
-            } else {
-                if (line.startsWith("CATEGORIES")) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        StringTokenizer _st = new StringTokenizer(line, ",");
-                        if (_st.countTokens() > 0) {
-                            while (_st.hasMoreTokens()) {
-                                vt.addCategory(_st.nextToken());
-                            }
-                        }
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::CATEGORIES::error::" + line);
-                    }
-                } else if (line.startsWith("SUMMARY") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setSummary(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::SUMMARY::error::" + line);
-                    }
-                } else if (line.startsWith("LOCATION") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setLocation(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::LOCATION::error::" + line);
-                    }
-                } else if (line.startsWith("CREATED") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setCreated(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::CREATED::error::" + line);
-                    }
-                } else if (line.startsWith("LAST-MODIFIED") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setLastModified(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::LAST-MODIFIED::error::" + line);
-                    }
-                } else if (line.startsWith("DESCRIPTION") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setDescription(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::DESCRIPTION::error::" + line);
-                    }
-                } else if (line.startsWith("DTSTAMP") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setDTStamp(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::LAST-MODIFIED::error::" + line);
-                    }
-                } else if (line.startsWith("DUE") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setDue(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::DUE::error::" + line);
-                    }
-                } else if (line.startsWith("UID") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setUid(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::UID::error::" + line);
-                    }
-                } else if (line.startsWith("DTSTART") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setDTStart(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::DTSTART::error::" + line);
-                    }
-                } else if (line.startsWith("EXDATE") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.addExDate(DateTime.getCalendarFromString(vtimezone.getTimeZone(), line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::EXDATE::error::" + line);
-                    }
-                } else if (line.startsWith("STATUS") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setStatus(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::STATUS::error::" + line);
-                    }
-                } else if (line.startsWith("PERCENT-COMPLETE") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        try {
-                            vt.setPercent(Integer.parseInt(line));
-                        } catch (NumberFormatException e) {
-                        }
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::PERCENT-COMPLETE::error::" + line);
-                    }
-                } else if (line.startsWith("CLASS") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setClassType(line);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::CLASS::error::" + line);
-                    }
-                } else if (line.startsWith("ATTENDEE") && line.indexOf(":") > 0) {
-                    try {
-                        Person p = new Person(line, Person.ATTENDEE);
-                        vt.setAttendee(p.getMailTo(), p);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::ATTENDEE::error::" + line);
-                    }
-                } else if (line.startsWith("ORGANIZER") && line.indexOf(":") > 0) {
-                    try {
-                        Person p = new Person(line, Person.ORGANIZER);
-                        vt.setOrganizer(p.getMailTo(), p);
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::ORGANIZER::error::" + line);
-                    }
-                } else if (line.startsWith("RRULE") && line.indexOf(":") > 0) {
-                    try {
-                        line = line.substring(line.indexOf(":") + 1);
-                        vt.setRRule(parseRRuleFromLine(line));
-                    } catch (Exception e) {
-                        throw new VCalendarException("VCALENDAR::VTODO::RRULE::error::" + line);
-                    }
-                } else if (line.startsWith("X-")) {
-                    vt.addExtended(line);
-                }
-            }
-        }
-    }
-
     private RRule parseRRuleFromLine(final String line) throws VCalendarException {
-        RRule rrule = new RRule();
-        StringTokenizer st = new StringTokenizer(line, ";");
+        final RRule rrule = new RRule();
+        final StringTokenizer st = new StringTokenizer(line, ";");
         while (st.hasMoreTokens()) {
             String part = st.nextToken();
             if (part.startsWith("FREQ=")) {
@@ -1326,18 +730,18 @@ public class VCalendar implements Serializable {
                 part = part.substring(part.indexOf("=") + 1);
                 try {
                     rrule.setInterval(Integer.parseInt(part));
-                } catch (NumberFormatException e) {
+                } catch (final NumberFormatException e) {
                 }
             } else if (part.startsWith("COUNT=")) {
                 part = part.substring(part.indexOf("=") + 1);
                 try {
                     rrule.setCount(Integer.parseInt(part));
-                } catch (NumberFormatException e) {
+                } catch (final NumberFormatException e) {
                 }
             } else if (part.startsWith("UNTIL=")) {
                 part = part.substring(part.indexOf("=") + 1);
-                if (vtimezone != null) {
-                    rrule.setUntil(DateTime.getCalendarFromString(vtimezone.getTimeZone(), part));
+                if (this.vtimezone != null) {
+                    rrule.setUntil(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), part));
                 } else {
                     rrule.setUntil(DateTime.getCalendarFromString(null, part));
                 }
@@ -1346,75 +750,75 @@ public class VCalendar implements Serializable {
                 rrule.setWeekStart(part);
             } else if (part.startsWith("BYMINUTE=")) {
                 part = part.substring(part.indexOf("=") + 1);
-                StringTokenizer _stt = new StringTokenizer(part, ",");
-                List<Integer> _values = new ArrayList<Integer>();
+                final StringTokenizer _stt = new StringTokenizer(part, ",");
+                final List<Integer> _values = new ArrayList<Integer>();
                 while (_stt.hasMoreTokens()) {
                     try {
                         _values.add(Integer.parseInt(_stt.nextToken()));
-                    } catch (NumberFormatException e) {
+                    } catch (final NumberFormatException e) {
                     }
                 }
                 rrule.setByMinute(_values);
             } else if (part.startsWith("BYHOUR=")) {
                 part = part.substring(part.indexOf("=") + 1);
-                StringTokenizer _stt = new StringTokenizer(part, ",");
-                List<Integer> _values = new ArrayList<Integer>();
+                final StringTokenizer _stt = new StringTokenizer(part, ",");
+                final List<Integer> _values = new ArrayList<Integer>();
                 while (_stt.hasMoreTokens()) {
                     try {
                         _values.add(Integer.parseInt(_stt.nextToken()));
-                    } catch (NumberFormatException e) {
+                    } catch (final NumberFormatException e) {
                     }
                 }
                 rrule.setByHour(_values);
             } else if (part.startsWith("BYDAY=")) {
                 part = part.substring(part.indexOf("=") + 1);
-                StringTokenizer _stt = new StringTokenizer(part, ",");
-                List<String> _values = new ArrayList<String>();
+                final StringTokenizer _stt = new StringTokenizer(part, ",");
+                final List<String> _values = new ArrayList<String>();
                 while (_stt.hasMoreTokens()) {
                     _values.add(_stt.nextToken().toUpperCase());
                 }
                 rrule.setByDay(_values);
             } else if (part.startsWith("BYMONTH=")) {
                 part = part.substring(part.indexOf("=") + 1);
-                StringTokenizer _stt = new StringTokenizer(part, ",");
-                List<Integer> _values = new ArrayList<Integer>();
+                final StringTokenizer _stt = new StringTokenizer(part, ",");
+                final List<Integer> _values = new ArrayList<Integer>();
                 while (_stt.hasMoreTokens()) {
                     try {
                         _values.add(Integer.parseInt(_stt.nextToken()));
-                    } catch (NumberFormatException e) {
+                    } catch (final NumberFormatException e) {
                     }
                 }
                 rrule.setByMonth(_values);
             } else if (part.startsWith("BYMONTHDAY=")) {
                 part = part.substring(part.indexOf("=") + 1);
-                StringTokenizer _stt = new StringTokenizer(part, ",");
-                List<Integer> _values = new ArrayList<Integer>();
+                final StringTokenizer _stt = new StringTokenizer(part, ",");
+                final List<Integer> _values = new ArrayList<Integer>();
                 while (_stt.hasMoreTokens()) {
                     try {
                         _values.add(Integer.parseInt(_stt.nextToken()));
-                    } catch (NumberFormatException e) {
+                    } catch (final NumberFormatException e) {
                     }
                 }
                 rrule.setByMonthDay(_values);
             } else if (part.startsWith("BYYEARDAY=")) {
                 part = part.substring(part.indexOf("=") + 1);
-                StringTokenizer _stt = new StringTokenizer(part, ",");
-                List<Integer> _values = new ArrayList<Integer>();
+                final StringTokenizer _stt = new StringTokenizer(part, ",");
+                final List<Integer> _values = new ArrayList<Integer>();
                 while (_stt.hasMoreTokens()) {
                     try {
                         _values.add(Integer.parseInt(_stt.nextToken()));
-                    } catch (NumberFormatException e) {
+                    } catch (final NumberFormatException e) {
                     }
                 }
                 rrule.setByYearDay(_values);
             } else if (part.startsWith("BYWEEKNO=")) {
                 part = part.substring(part.indexOf("=") + 1);
-                StringTokenizer _stt = new StringTokenizer(part, ",");
-                List<Integer> _values = new ArrayList<Integer>();
+                final StringTokenizer _stt = new StringTokenizer(part, ",");
+                final List<Integer> _values = new ArrayList<Integer>();
                 while (_stt.hasMoreTokens()) {
                     try {
                         _values.add(Integer.parseInt(_stt.nextToken()));
-                    } catch (NumberFormatException e) {
+                    } catch (final NumberFormatException e) {
                     }
                 }
                 rrule.setByWeekNo(_values);
@@ -1423,18 +827,552 @@ public class VCalendar implements Serializable {
         return rrule;
     }
 
-    private static final byte[] readBytes(final InputStream is) throws IOException {
-        byte[] buffer = new byte[2048];
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        BufferedInputStream bufferInput = new BufferedInputStream(is);
+    private void parseVAlarm(final VEvent ve) throws VCalendarException {
+        final VAlarm va = new VAlarm();
         try {
-            for (int i = bufferInput.read(buffer); i >= 0; i = bufferInput.read(buffer)) {
-                baos.write(buffer, 0, i);
+            for (nextLine(); this.line != null; nextLine()) {
+                if (this.line.startsWith("END:VALARM")) {
+                    ve.addAlarm(va);
+                    break;
+                } else {
+                    if (this.line.startsWith("TRIGGER")) {
+                        va.setTrigger(new Trigger(this.line));
+                    } else if (this.line.startsWith("REPEAT")) {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        try {
+                            va.setRepeat(Integer.parseInt(this.line));
+                        } catch (final NumberFormatException e) {
+                        }
+                    } else if (this.line.startsWith("DURATION")) {
+                        this.line = this.line.substring(this.line.lastIndexOf(":") + 1);
+                        va.setDuration(new Duration(this.line));
+                    } else if (this.line.startsWith("DESCRIPTION")) {
+                        this.line = this.line.substring(this.line.lastIndexOf(":") + 1);
+                        va.setDescription(this.line);
+                    } else if (this.line.startsWith("ACTION")) {
+                        this.line = this.line.substring(this.line.lastIndexOf(":") + 1);
+                        va.setAction(this.line);
+                    } else if (this.line.startsWith("X-")) {
+                        va.addExtended(this.line);
+                    }
+                }
             }
-        } finally {
-            bufferInput.close();
+        } catch (final Exception e) {
+            throw new VCalendarException("VCALENDAR::VEVENT::VALARM::error::" + this.line);
         }
-        return baos.toByteArray();
+    }
+
+    private void parseVEvent() throws IOException, VCalendarException {
+        final VEvent ve = new VEvent();
+        for (nextLine(); this.line != null; nextLine()) {
+            if (this.line.startsWith("END:VEVENT")) {
+                if (this.vevent.containsKey(ve.getUid())) {
+                    if (!this.vevent.get(ve.getUid()).hasRecurrence()) {
+                        this.vevent.put(ve.getUid(), ve);
+                    }
+                } else {
+                    this.vevent.put(ve.getUid(), ve);
+                }
+                break;
+            } else if (this.line.startsWith("BEGIN:VALARM")) {
+                /**
+                 * VALARM
+                 */
+                parseVAlarm(ve);
+            } else {
+                if (this.line.startsWith("CATEGORIES")) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        final StringTokenizer st = new StringTokenizer(this.line, ",");
+                        if (st.countTokens() > 0) {
+                            while (st.hasMoreTokens()) {
+                                ve.addCategory(st.nextToken());
+                            }
+                        }
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::CATEGORIES::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("SUMMARY") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setSummary(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::LOCATION::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("LOCATION") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setLocation(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::LOCATION::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("CREATED") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setCreated(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::CREATED::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("LAST-MODIFIED") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setLastModified(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::LAST-MODIFIED::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DESCRIPTION") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setDescription(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::DESCRIPTION::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DTSTAMP") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setDTStamp(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::DTSTAMP::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("UID") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setUid(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::UID::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DTSTART") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setDTStart(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::DTSTART::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DTEND") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setDTEnd(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::DTEND::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("EXDATE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.addExDate(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::EXDATE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("STATUS") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setStatus(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::STATUS::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("CLASS") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setClassType(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::CLASS::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("ATTENDEE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        final Person p = new Person(this.line, Person.ATTENDEE);
+                        ve.setAttendee(p.getMailTo(), p);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::ATTENDEE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("ORGANIZER") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        final Person p = new Person(this.line, Person.ORGANIZER);
+                        ve.setOrganizer(p.getMailTo(), p);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::ORGANIZER::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("RRULE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        ve.setRRule(parseRRuleFromLine(this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VEVENT::RRULE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("X-")) {
+                    ve.addExtended(this.line);
+                }
+            }
+        }
+    }
+
+    private void parseVFreeBusy() throws IOException, VCalendarException {
+        final VFreeBusy vfb = new VFreeBusy(this.vtimezone);
+        for (nextLine(); this.line != null; nextLine()) {
+            if (this.line.startsWith("END:VFREEBUSY")) {
+                this.vfreebusy = vfb;
+                break;
+            } else if (this.line.startsWith("DTSTART")) {
+                try {
+                    this.line = this.line.substring(this.line.indexOf(":") + 1);
+                    vfb.setDTStart(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                } catch (final Exception e) {
+                    throw new VCalendarException("VCALENDAR::VFREEBUSY::DTSTART::error::" + this.line);
+                }
+            } else if (this.line.startsWith("DTEND")) {
+                try {
+                    this.line = this.line.substring(this.line.indexOf(":") + 1);
+                    vfb.setDTEnd(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                } catch (final Exception e) {
+                    throw new VCalendarException("VCALENDAR::VFREEBUSY::DTEND::error::" + this.line);
+                }
+            } else if (this.line.startsWith("ATTENDEE") && (this.line.indexOf(":") > 0)) {
+                try {
+                    final Person p = new Person(this.line, Person.ATTENDEE);
+                    vfb.setAttendee(p.getMailTo(), p);
+                } catch (final Exception e) {
+                    throw new VCalendarException("VCALENDAR::VFREEBUSY::ATTENDEE::error::" + this.line);
+                }
+            } else if (this.line.startsWith("ORGANIZER") && (this.line.indexOf(":") > 0)) {
+                try {
+                    final Person p = new Person(this.line, Person.ORGANIZER);
+                    vfb.setOrganizer(p.getMailTo(), p);
+                } catch (final Exception e) {
+                    throw new VCalendarException("VCALENDAR::VFREEBUSY::ORGANIZER::error::" + this.line);
+                }
+            } else if (this.line.startsWith("FREEBUSY")) {
+                this.line = this.line.substring(this.line.indexOf(":") + 1);
+                try {
+                    final StringTokenizer st = new StringTokenizer(this.line, ",");
+                    while (st.hasMoreTokens()) {
+                        final String t = st.nextToken();
+                        if (t.contains("/")) {
+                            try {
+                                final Calendar start = DateTime.getCalendarFromString(this.vtimezone.getTimeZone(),
+                                        t.substring(0, t.indexOf("/")));
+                                final Calendar end = DateTime.getCalendarFromString(this.vtimezone.getTimeZone(),
+                                        t.substring(t.indexOf("/") + 1));
+                                vfb.addBusy(new Period(start, end));
+                            } catch (final Exception e) {
+                                final Calendar start = DateTime.getCalendarFromString(this.vtimezone.getTimeZone(),
+                                        t.substring(0, t.indexOf("/")));
+                                final Duration d = new Duration(t.substring(t.indexOf("/") + 1));
+                                final Calendar end = Calendar.getInstance();
+                                end.setTimeInMillis(start.getTimeInMillis() + d.getMilliseconds());
+                                vfb.addBusy(new Period(start, end));
+                            }
+                        }
+                    }
+                } catch (final NullPointerException e) {
+                    throw new VCalendarException("VCALENDAR::VFREEBUSY::FREEBUSY::error::" + this.line);
+                }
+            }
+        }
+    }
+
+    private void parseVJournal() throws IOException, VCalendarException {
+        final VJournal vj = new VJournal();
+        for (nextLine(); this.line != null; nextLine()) {
+            if (this.line.isEmpty()) {
+                nextLine();
+            }
+            if (this.line.indexOf("END:VJOURNAL") != -1) {
+                this.vjournal.put(vj.getUid(), vj);
+                break;
+            } else {
+                if (this.line.startsWith("CATEGORIES")) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        final StringTokenizer st = new StringTokenizer(this.line, ",");
+                        if (st.countTokens() > 0) {
+                            while (st.hasMoreTokens()) {
+                                vj.addCategory(st.nextToken());
+                            }
+                        }
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::CATEGORIES::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("SUMMARY") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vj.setSummary(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::SUMMARY::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DESCRIPTION") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vj.setDescription(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::DESCRIPTION::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("CREATED") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vj.setCreated(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::CREATED::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("UID") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vj.setUid(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::UID::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DTSTART") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vj.setDTStart(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::DTSTART::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("STATUS") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vj.setStatus(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::STATUS::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("CLASS") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vj.setClassType(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::CLASS::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("ATTENDEE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        final Person p = new Person(this.line, Person.ATTENDEE);
+                        vj.setAttendee(p.getMailTo(), p);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::ATTENDEE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("ORGANIZER") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        final Person p = new Person(this.line, Person.ORGANIZER);
+                        vj.setOrganizer(p.getMailTo(), p);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::ORGANIZER::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("RRULE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vj.setRRule(parseRRuleFromLine(this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VJOURNAL::RRULE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("X-")) {
+                    vj.addExtended(this.line);
+                }
+            }
+        }
+    }
+
+    private void parseVTimeZone() throws IOException, VCalendarException {
+        final VTimeZone vtz = new VTimeZone(null);
+        for (nextLine(); this.line != null; nextLine()) {
+            if (this.line.startsWith("END:VTIMEZONE")) {
+                this.vtimezone = vtz;
+                break;
+            } else if (this.line.startsWith("TZID")) {
+                this.line = this.line.substring(this.line.indexOf(":") + 1);
+                vtz.setTZID(this.line);
+            } else if (this.line.startsWith("BEGIN:STANDARD")) {
+                for (nextLine(); this.line != null; nextLine()) {
+                    if (this.line.startsWith("END:STANDARD")) {
+                        break;
+                    } else if (this.line.startsWith("RRULE")) {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vtz.setStandardRRule(parseRRuleFromLine(this.line));
+                    }
+                }
+            } else if (this.line.startsWith("BEGIN:DAYLIGHT")) {
+                for (nextLine(); this.line != null; nextLine()) {
+                    if (this.line.startsWith("END:DAYLIGHT")) {
+                        break;
+                    } else if (this.line.startsWith("RRULE")) {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vtz.setDayLightRRule(parseRRuleFromLine(this.line));
+                    }
+                }
+            }
+        }
+    }
+
+    private void parseVTodo() throws IOException, VCalendarException {
+        final VTodo vt = new VTodo();
+        for (nextLine(); this.line != null; nextLine()) {
+            if (this.line.isEmpty()) {
+                nextLine();
+            }
+            if (this.line.indexOf("END:VTODO") != -1) {
+                this.vtodo.put(vt.getUid(), vt);
+                break;
+            } else if (this.line.startsWith("BEGIN:VALARM")) {
+                final VAlarm va = new VAlarm();
+                try {
+                    for (nextLine(); this.line != null; nextLine()) {
+                        if (this.line.startsWith("END:VALARM")) {
+                            vt.addAlarm(va);
+                            break;
+                        } else {
+                            if (this.line.startsWith("TRIGGER")) {
+                                va.setTrigger(new Trigger(this.line));
+                            } else if (this.line.startsWith("REPEAT")) {
+                                this.line = this.line.substring(this.line.indexOf(":") + 1);
+                                try {
+                                    va.setRepeat(Integer.parseInt(this.line));
+                                } catch (final NumberFormatException e) {
+                                }
+                            } else if (this.line.startsWith("DURATION")) {
+                                this.line = this.line.substring(this.line.lastIndexOf(":") + 1);
+                                va.setDuration(new Duration(this.line));
+                            } else if (this.line.startsWith("DESCRIPTION")) {
+                                this.line = this.line.substring(this.line.lastIndexOf(":") + 1);
+                                va.setDescription(this.line);
+                            } else if (this.line.startsWith("ACTION")) {
+                                this.line = this.line.substring(this.line.lastIndexOf(":") + 1);
+                                va.setAction(this.line);
+                            } else if (this.line.startsWith("X-")) {
+                                va.addExtended(this.line);
+                            }
+                        }
+                    }
+                } catch (final Exception e) {
+                    throw new VCalendarException("VCALENDAR::VTODO::VALARM::error::" + this.line);
+                }
+            } else {
+                if (this.line.startsWith("CATEGORIES")) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        final StringTokenizer _st = new StringTokenizer(this.line, ",");
+                        if (_st.countTokens() > 0) {
+                            while (_st.hasMoreTokens()) {
+                                vt.addCategory(_st.nextToken());
+                            }
+                        }
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::CATEGORIES::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("SUMMARY") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setSummary(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::SUMMARY::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("LOCATION") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setLocation(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::LOCATION::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("CREATED") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setCreated(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::CREATED::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("LAST-MODIFIED") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setLastModified(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::LAST-MODIFIED::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DESCRIPTION") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setDescription(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::DESCRIPTION::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DTSTAMP") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setDTStamp(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::LAST-MODIFIED::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DUE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setDue(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::DUE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("UID") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setUid(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::UID::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("DTSTART") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setDTStart(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::DTSTART::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("EXDATE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.addExDate(DateTime.getCalendarFromString(this.vtimezone.getTimeZone(), this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::EXDATE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("STATUS") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setStatus(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::STATUS::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("PERCENT-COMPLETE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        try {
+                            vt.setPercent(Integer.parseInt(this.line));
+                        } catch (final NumberFormatException e) {
+                        }
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::PERCENT-COMPLETE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("CLASS") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setClassType(this.line);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::CLASS::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("ATTENDEE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        final Person p = new Person(this.line, Person.ATTENDEE);
+                        vt.setAttendee(p.getMailTo(), p);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::ATTENDEE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("ORGANIZER") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        final Person p = new Person(this.line, Person.ORGANIZER);
+                        vt.setOrganizer(p.getMailTo(), p);
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::ORGANIZER::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("RRULE") && (this.line.indexOf(":") > 0)) {
+                    try {
+                        this.line = this.line.substring(this.line.indexOf(":") + 1);
+                        vt.setRRule(parseRRuleFromLine(this.line));
+                    } catch (final Exception e) {
+                        throw new VCalendarException("VCALENDAR::VTODO::RRULE::error::" + this.line);
+                    }
+                } else if (this.line.startsWith("X-")) {
+                    vt.addExtended(this.line);
+                }
+            }
+        }
     }
 
     /**
@@ -1444,7 +1382,7 @@ public class VCalendar implements Serializable {
      * @return
      */
     public boolean removeVevent(final String uid) {
-        if (vevent.remove(uid) != null) {
+        if (this.vevent.remove(uid) != null) {
             return true;
         }
         return false;
@@ -1457,7 +1395,7 @@ public class VCalendar implements Serializable {
      * @return
      */
     public boolean removeVJournal(final String uid) {
-        if (vjournal.remove(uid) != null) {
+        if (this.vjournal.remove(uid) != null) {
             return true;
         }
         return false;
@@ -1470,7 +1408,7 @@ public class VCalendar implements Serializable {
      * @return
      */
     public boolean removeVtodo(final String uid) {
-        if (vtodo.remove(uid) != null) {
+        if (this.vtodo.remove(uid) != null) {
             return true;
         }
         return false;
@@ -1482,7 +1420,7 @@ public class VCalendar implements Serializable {
      * @param icalendar
      */
     public void setFile(final File icalendar) {
-        ical_file = icalendar;
+        this.ical_file = icalendar;
     }
 
     /**
@@ -1500,38 +1438,38 @@ public class VCalendar implements Serializable {
      * @param timezone
      */
     public void setTimeZone(final VTimeZone timezone) {
-        vtimezone = timezone;
+        this.vtimezone = timezone;
     }
 
     @Override
     public String toString() {
         final String CRLF = "\r\n";
-        StringBuilder sb = new StringBuilder();
+        final StringBuilder sb = new StringBuilder();
         sb.append("BEGIN:VCALENDAR");
         sb.append(CRLF);
         sb.append("VERSION:" + version);
         sb.append(CRLF);
         sb.append("PRODID:" + prodid);
         sb.append(CRLF);
-        if (method != null) {
-            sb.append("METHOD:" + method);
+        if (this.method != null) {
+            sb.append("METHOD:" + this.method);
             sb.append(CRLF);
         }
 
-        if (vtimezone != null) {
-            sb.append(vtimezone.toString());
+        if (this.vtimezone != null) {
+            sb.append(this.vtimezone.toString());
         }
 
-        for (VEvent ve : getVevents()) {
-            sb.append(ve.toString(vtimezone));
+        for (final VEvent ve : getVevents()) {
+            sb.append(ve.toString(this.vtimezone));
         }
 
-        for (VTodo vt : getVtodos()) {
-            sb.append(vt.toString(vtimezone));
+        for (final VTodo vt : getVtodos()) {
+            sb.append(vt.toString(this.vtimezone));
         }
 
-        for (VJournal vj : getVjournals()) {
-            sb.append(vj.toString(vtimezone));
+        for (final VJournal vj : getVjournals()) {
+            sb.append(vj.toString(this.vtimezone));
         }
 
         sb.append("END:VCALENDAR");
@@ -1547,10 +1485,10 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public void updateVevent(final VEvent ve) throws VCalendarException {
-        if (!vevent.containsKey(ve.getUid())) {
+        if (!this.vevent.containsKey(ve.getUid())) {
             throw new VCalendarException("VEvent not found");
         }
-        vevent.put(ve.getUid(), ve);
+        this.vevent.put(ve.getUid(), ve);
     }
 
     /**
@@ -1560,10 +1498,10 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public void updateVjournal(final VJournal vj) throws VCalendarException {
-        if (!vjournal.containsKey(vj.getUid())) {
+        if (!this.vjournal.containsKey(vj.getUid())) {
             throw new VCalendarException("VJournal not found");
         }
-        vjournal.put(vj.getUid(), vj);
+        this.vjournal.put(vj.getUid(), vj);
     }
 
     /**
@@ -1573,10 +1511,10 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public void updateVtodo(final VTodo vt) throws VCalendarException {
-        if (!vtodo.containsKey(vt.getUid())) {
+        if (!this.vtodo.containsKey(vt.getUid())) {
             throw new VCalendarException("VTodo not found");
         }
-        vtodo.put(vt.getUid(), vt);
+        this.vtodo.put(vt.getUid(), vt);
     }
 
     /**
@@ -1585,12 +1523,12 @@ public class VCalendar implements Serializable {
      * @throws VCalendarException
      */
     public void write() throws VCalendarException {
-        if (ical_file != null && ical_file.canWrite()) {
+        if ((this.ical_file != null) && this.ical_file.canWrite()) {
             try {
-                FileUtils.writeFile(ical_file, toString());
-            } catch (FileLockException e) {
+                FileUtils.writeFile(this.ical_file, toString());
+            } catch (final FileLockException e) {
                 throw new VCalendarException(e);
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new VCalendarException(e);
             }
         }
