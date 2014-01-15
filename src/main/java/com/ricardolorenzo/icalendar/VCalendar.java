@@ -48,40 +48,6 @@ public class VCalendar implements Serializable {
     public static final String prodid = "-//Ricardo Lorenzo//NONSGML Ricardo Lorenzo//EN";
     public static final String version = "2.0";
 
-    /**
-     * Return a list of <code>Integer</code> with days in a month that contains VEvent objects
-     * 
-     * @param date
-     * @param events
-     * @return
-     */
-    public static List<Integer> getVeventMonthDays(final Calendar date, final List<VEvent> events) {
-        final Calendar endDate = (java.util.Calendar) date.clone();
-        date.set(java.util.Calendar.DAY_OF_MONTH, 1);
-        date.set(java.util.Calendar.HOUR, 0);
-        date.set(java.util.Calendar.MINUTE, 0);
-        date.set(java.util.Calendar.SECOND, 1);
-        date.set(java.util.Calendar.MILLISECOND, 0);
-        endDate.set(java.util.Calendar.DAY_OF_MONTH, endDate.getMaximum(java.util.Calendar.DAY_OF_MONTH));
-        endDate.set(java.util.Calendar.HOUR, 23);
-        endDate.set(java.util.Calendar.MINUTE, 59);
-        endDate.set(java.util.Calendar.SECOND, 59);
-        endDate.set(java.util.Calendar.MILLISECOND, 0);
-        final List<Integer> days = new ArrayList<Integer>();
-        for (final VEvent ve : events) {
-            final List<Period> periods = ve.getPeriods(new Period(date, endDate));
-            if ((periods != null) && !periods.isEmpty()) {
-                for (final Period p : periods) {
-                    final Integer _day = new Integer(p.getStart().get(java.util.Calendar.DAY_OF_MONTH));
-                    if (!days.contains(_day)) {
-                        days.add(_day);
-                    }
-                }
-            }
-        }
-        return days;
-    }
-
     private static final byte[] readBytes(final InputStream is) throws IOException {
         final byte[] buffer = new byte[2048];
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
