@@ -644,7 +644,7 @@ public class VCalendar implements Serializable {
     }
 
     private void nextLine() throws IOException {
-        this.line = "";
+        this.line = null;
         if ((this.buffer != null) && this.buffer.ready()) {
             this.line = this.buffer.readLine();
         }
